@@ -2,7 +2,7 @@ import numpy as np
 #from sklearn.metrics import f1_score
 import nibabel as nib
 import os
-
+import pdb
 #to make directories
 import pathlib
 from skimage import transform
@@ -53,21 +53,27 @@ class dataloaderObj:
             pixel_size : pixel dimensions of the loaded image
             affine_tst : affine transformation matrix of the loaded image
         """
+        systole_lstfiles = []  # create an empty list
         for study_id in study_id_list:
             #print("study_id",study_id)
             path_files=str(self.data_path_tr)+str(study_id)+'/'
-            #print(path_files)
-            systole_lstfiles = []  # create an empty list
+            print(path_files)
+            #systole_lstfiles = []  # create an empty list
             for dirName, subdirList, fileList in os.walk(path_files):
                 fileList.sort()
-                #print(dirName,subdirList,fileList)
+                print(dirName,subdirList,fileList)
                 for filename in fileList:
-                    #print(filename)
+                    print(filename)
                     if "_frame01" in filename.lower():
                         systole_lstfiles.append(os.path.join(dirName,filename))
                     elif "_frame04" in filename.lower():
                         systole_lstfiles.append(os.path.join(dirName,filename))
+                    else:
+                        print("file %s not added" % filename)
 
+
+
+        pdb.set_trace()
         # Load the 3D image
         image_data_test_load = nib.load(systole_lstfiles[0])
         image_data_test_sys=image_data_test_load.get_data()

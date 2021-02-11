@@ -1,6 +1,7 @@
 import os
 
 import tensorflow as tf
+
 config=tf.ConfigProto()
 config.gpu_options.allow_growth=True
 config.allow_soft_placement=True

@@ -18,7 +18,7 @@ echo Step 2: start pre-training of Decoder
 python pretr_decoder_local_contrastive_loss.py --dataset=acdc --no_of_tr_imgs=tr52 --pretr_no_of_tr_imgs=tr52 --local_reg_size=1 --no_of_local_regions=13 --temp_fac=0.1 --global_loss_exp_no=2 --local_loss_exp_no=0 --no_of_decoder_blocks=3 --no_of_neg_local_regions=5 --bt_size=12
 
 echo end of pre-training of Decoder
-
+x
 #Step 3
 echo Step 3: start fine-tuning with initialization from both Encoder and Decoder weights learned from pre-training 
 
