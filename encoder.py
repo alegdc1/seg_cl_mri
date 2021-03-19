@@ -2,19 +2,19 @@ from parts_model import *
 
 
 class Encoder(nn.Module):
-    def __init__(self, n_channels, n_classes, no_filters):
+    def __init__(self, config):
         super(Encoder, self).__init__()
-        self.n_channels = n_channels
-        self.n_classes = n_classes
+        self.n_channels = config['n_channels']
+        self.n_classes = config['n_classes']
+        self.no_filters = config['no_filters']
         self.enc_outputs = []
 
-        self.inc = DoubleConv(n_channels, 16)
+        self.inc = DoubleConv(self.n_channels, 16)
 
-        # TODO: create layers by using no_filters argument
         self.layer_list = nn.ModuleList([])
-        for i, filters in enumerate(no_filters[:-1]):
-            print("Appending filter from %d to %d" % (filters,no_filters[i+1]))
-            self.layer_list.add_module("down%d" % (i+1), Down(filters, no_filters[i + 1]))
+        for i, filters in enumerate(self.no_filters[:-1]):
+            # print("Appending filter from %d to %d" % (filters,self.no_filters[i+1]))
+            self.layer_list.add_module("down%d" % (i+1), Down(filters, self.no_filters[i + 1]))
         # self.down1 = Down(16, 32)
         # self.down2 = Down(32, 64)
         # self.down3 = Down(64, 128)

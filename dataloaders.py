@@ -61,7 +61,7 @@ class dataloaderObj:
             #systole_lstfiles = []  # create an empty list
             for dirName, subdirList, fileList in os.walk(path_files):
                 fileList.sort()
-                print(dirName,subdirList,fileList)
+                print(dirName,subdirList,fileList)s
                 for filename in fileList:
                     print(filename)
                     if "_frame01" in filename.lower():

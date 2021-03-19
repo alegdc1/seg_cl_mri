@@ -1,22 +1,25 @@
-from encoder import Encoder
+import numpy as np
 import torch.nn as nn
 import pdb
 
+from encoder import Encoder
+
+
 class EncoderPretrainNet(nn.Module):
-    def __init__(self, n_channels, n_classes, no_filters):
+    def __init__(self, config):
         super().__init__()
 
-        self.enc = Encoder(n_channels, n_classes, no_filters)
-        self.g1= nn.Sequential(nn.Flatten(),
-                                nn.Linear(3200, 1024),
+        output_size_squared = np.prod(np.array(config["resize_size"]) // (1 << (len(config["no_filters"]) - 1)))
+        self.inter_ch = int(output_size_squared*config["no_filters"][-1])
+
+        self.enc = Encoder(config)
+        self.g1 = nn.Sequential(nn.Flatten(),
+                                nn.Linear(self.inter_ch, 1024),
                                 nn.ReLU(),
                                 nn.Linear(1024, 128)
                                 )
 
     def forward(self, x):
         x = self.enc(x)
-        #pdb.set_trace()
         x = self.g1(x)
-
         return x
-

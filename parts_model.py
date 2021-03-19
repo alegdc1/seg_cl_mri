@@ -54,7 +54,6 @@ class Up(nn.Module):
                 nn.ReLU(inplace=True),
             )
         if double_conv:
-            # TODO: inspect not sure
             self.conv = DoubleConv(2*out_channels, out_channels, out_channels)
         else:
             self.conv = nn.Sequential(

@@ -14,6 +14,22 @@ class GlobalLossD(nn.Module):
         self.temp_fac = config['temp_fac']
 
         self.cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
+    def compute_symmetrical_loss(self, xi, xj, x_den):
+        loss_tmp = 0
+
+        num_i1_i2_ss = self.cos_sim(xi, xj) / self.temp_fac
+        den_i1_i2_ss = self.cos_sim(xi, x_den) / self.temp_fac
+        num_i1_i2_loss = -torch.log(
+            torch.exp(num_i1_i2_ss) / (torch.exp(num_i1_i2_ss) + torch.sum(torch.exp(den_i1_i2_ss))))
+        loss_tmp = loss_tmp + num_i1_i2_loss
+        # for positive pair (x_2,x_1);
+        # numerator same & denominator of loss term (den_i1_i2_ss) & loss (num_i1_i2_loss)
+        den_i2_i1_ss = self.cos_sim(xj, x_den) / self.temp_fac
+        num_i2_i1_loss = -torch.log(
+            torch.exp(num_i1_i2_ss) / (torch.exp(num_i1_i2_ss) + torch.sum(torch.exp(den_i2_i1_ss))))
+        loss_tmp = loss_tmp + num_i2_i1_loss
+
+        return loss_tmp
 
     def forward(self, reg_pred):
 
@@ -91,14 +107,6 @@ class GlobalLossD(nn.Module):
             # print('d1',den_i1,len(den_i1))
 
             # gather required positive samples x_1,x_2,x_3,x_4 for the numerator term
-            # x_num_i1 = torch.gather(reg_pred, num_i1)
-            # x_num_i2 = torch.gather(reg_pred, num_i2)
-            # x_num_i3 = torch.gather(reg_pred, num_i3)
-            # x_num_i4 = torch.gather(reg_pred, num_i4)
-            # x_num_i5 = torch.gather(reg_pred, num_i5)
-            # x_num_i6 = torch.gather(reg_pred, num_i6)
-
-            pdb.set_trace()
             x_num_i1 = reg_pred[num_i1]
             x_num_i2 = reg_pred[num_i2]
             x_num_i3 = reg_pred[num_i3]
@@ -113,105 +121,26 @@ class GlobalLossD(nn.Module):
             # calculate cosine similarity score + global contrastive loss for each pair of positive images
             # if(i%8<4):
             if (pos_index % (3 * self.n_parts) < self.n_parts):
-                # for positive pair (x_i1, x_a_i1): (i1,i2)
-                # numerator of loss term (num_i1_i2_ss) & denominator of loss term (den_i1_i2_ss) & loss (num_i1_i2_loss)
-                num_i1_i2_ss = self.cos_sim(x_num_i1, x_num_i2) / self.temp_fac
-                den_i1_i2_ss = self.cos_sim(x_num_i1, x_den) / self.temp_fac
-                num_i1_i2_loss = -torch.log(
-                    torch.exp(num_i1_i2_ss) / (torch.exp(num_i1_i2_ss) + torch.sum(torch.exp(den_i1_i2_ss))))
-                net_global_loss = net_global_loss + num_i1_i2_loss
-                # for positive pair (x_a_i1,x_i1);
-                # numerator same & denominator of loss term (den_i1_i2_ss) & loss (num_i1_i2_loss)
-                den_i2_i1_ss = self.cos_sim(x_num_i2, x_den) / self.temp_fac
-                num_i2_i1_loss = -torch.log(
-                    torch.exp(num_i1_i2_ss) / (torch.exp(num_i1_i2_ss) + torch.sum(torch.exp(den_i2_i1_ss))))
-                net_global_loss = net_global_loss + num_i2_i1_loss
+                # # for positive pair (x_i1, x_a_i1): (i1,i2) and for positive pair (x_a_i1,x_i1);
+                net_global_loss += self.compute_symmetrical_loss(x_num_i1, x_num_i2, x_den)
 
+                # # for positive pair (x_a_i1, x_a_i2): (i2,i3) and for positive pair (x_a_i2, x_a_i1);
+                net_global_loss += self.compute_symmetrical_loss(x_num_i2, x_num_i3, x_den)
 
-                # for positive pair (x_a_i1, x_a_i2): (i2,i3)
-                # numerator of loss term (num_i1_i3_ss) & denominator of loss term (den_i1_i3_ss) & loss (num_i1_i3_loss)
-                num_i2_i3_ss = self.cos_sim(x_num_i2, x_num_i3) / self.temp_fac
-                den_i2_i3_ss = self.cos_sim(x_num_i2, x_den) / self.temp_fac
-                num_i2_i3_loss = -torch.log(
-                    torch.exp(num_i2_i3_ss) / (torch.exp(num_i2_i3_ss) + torch.sum(torch.exp(den_i2_i3_ss))))
-                net_global_loss = net_global_loss + num_i2_i3_loss
-                # for positive pair (x_a_i2, x_a_i1);
-                # numerator same & denominator of loss term (den_i3_i1_ss) & loss (num_i3_i1_loss)
-                den_i3_i2_ss = self.cos_sim(x_num_i3, x_den) / self.temp_fac
-                num_i3_i2_loss = -torch.log(
-                    torch.exp(num_i2_i3_ss) / (torch.exp(num_i2_i3_ss) + torch.sum(torch.exp(den_i3_i2_ss))))
-                net_global_loss = net_global_loss + num_i3_i2_loss
+                # # for positive pair (x_i1, x_j1): (i1,i4) and for positive pair (x_j1, x_i1)
+                net_global_loss += self.compute_symmetrical_loss(x_num_i1, x_num_i4, x_den)
 
-                # for positive pair (x_i1, x_j1): (i1,i4)
-                # numerator of loss term (num_i2_i3_ss) & denominator of loss term (den_i2_i3_ss) & loss (num_i2_i3_loss)
-                num_i1_i4_ss = self.cos_sim(x_num_i1, x_num_i4) / self.temp_fac
-                den_i1_i4_ss = self.cos_sim(x_num_i1, x_den) / self.temp_fac
-                num_i1_i4_loss = -torch.log(
-                    torch.exp(num_i1_i4_ss) / (torch.exp(num_i1_i4_ss) + torch.sum(torch.exp(den_i1_i4_ss))))
-                net_global_loss = net_global_loss + num_i1_i4_loss
-                # for positive pair (x_j1, x_i1)
-                # numerator same & denominator of loss term (den_i3_i2_ss) & loss (num_i3_i2_loss)
-                den_i4_i1_ss = self.cos_sim(x_num_i4, x_den) / self.temp_fac
-                num_i4_i1_loss = -torch.log(
-                    torch.exp(num_i1_i4_ss) / (torch.exp(num_i1_i4_ss) + torch.sum(torch.exp(den_i4_i1_ss))))
-                net_global_loss = net_global_loss + num_i4_i1_loss
+                # for positive pair (x_j1, x_a_j1): (i4,i5) and for positive pair (x_a_j1, x_j1)
+                net_global_loss += self.compute_symmetrical_loss(x_num_i4, x_num_i5, x_den)
 
-                # for positive pair (x_j1, x_a_j1): (i4,i5)
-                # numerator of loss term (num_i2_i4_ss) & denominator of loss term (den_i2_i4_ss) & loss (num_i2_i4_loss)
-                num_i4_i5_ss = self.cos_sim(x_num_i4, x_num_i5) / self.temp_fac
-                den_i4_i5_ss = self.cos_sim(x_num_i4, x_den) / self.temp_fac
-                num_i4_i5_loss = -torch.log(
-                    torch.exp(num_i4_i5_ss) / (torch.exp(num_i4_i5_ss) + torch.sum(torch.exp(den_i4_i5_ss))))
-                net_global_loss = net_global_loss + num_i4_i5_loss
-                # for positive pair (x_a_j1, x_j1)
-                # numerator same & denominator of loss term (den_i4_i2_ss) & loss (num_i4_i2_loss)
-                den_i5_i4_ss = self.cos_sim(x_num_i5, x_den) / self.temp_fac
-                num_i5_i4_loss = -torch.log(
-                    torch.exp(num_i4_i5_ss) / (torch.exp(num_i4_i5_ss) + torch.sum(torch.exp(den_i5_i4_ss))))
-                net_global_loss = net_global_loss + num_i5_i4_loss
+                # for positive pair (x_j1, x_a_j2): (i5,i6) and for positive pair (x_a_j2, x_j1)
+                net_global_loss += self.compute_symmetrical_loss(x_num_i5, x_num_i6, x_den)
 
-                # for positive pair (x_j1, x_a_j2): (i5,i6)
-                # numerator of loss term (num_i2_i4_ss) & denominator of loss term (den_i2_i4_ss) & loss (num_i2_i4_loss)
-                num_i5_i6_ss = self.cos_sim(x_num_i5, x_num_i6) / self.temp_fac
-                den_i5_i6_ss = self.cos_sim(x_num_i5, x_den) / self.temp_fac
-                num_i5_i6_loss = -torch.log(
-                    torch.exp(num_i5_i6_ss) / (torch.exp(num_i5_i6_ss) + torch.sum(torch.exp(den_i5_i6_ss))))
-                net_global_loss = net_global_loss + num_i5_i6_loss
-                # for positive pair (x_a_j2, x_j1)
-                # numerator same & denominator of loss term (den_i4_i2_ss) & loss (num_i4_i2_loss)
-                den_i6_i5_ss = self.cos_sim(x_num_i6, x_den) / self.temp_fac
-                num_i6_i5_loss = -torch.log(
-                    torch.exp(num_i5_i6_ss) / (torch.exp(num_i5_i6_ss) + torch.sum(torch.exp(den_i6_i5_ss))))
-                net_global_loss = net_global_loss + num_i6_i5_loss
+                # for positive pair (x_a_i1, x_a_j2): (i2,i5) and for positive pair (x_a_j1, x_a_i1)
+                net_global_loss += self.compute_symmetrical_loss(x_num_i2, x_num_i5, x_den)
 
-                # for positive pair (x_a_i1, x_a_j2): (i2,i5)
-                # numerator of loss term (num_i2_i4_ss) & denominator of loss term (den_i2_i4_ss) & loss (num_i2_i4_loss)
-                num_i2_i5_ss = self.cos_sim(x_num_i2, x_num_i5) / self.temp_fac
-                den_i2_i5_ss = self.cos_sim(x_num_i2, x_den) / self.temp_fac
-                num_i2_i5_loss = -torch.log(
-                    torch.exp(num_i2_i5_ss) / (torch.exp(num_i2_i5_ss) + torch.sum(torch.exp(den_i2_i5_ss))))
-                net_global_loss = net_global_loss + num_i2_i5_loss
-                # for positive pair (x_a_j1, x_a_i1)
-                # numerator same & denominator of loss term (den_i4_i2_ss) & loss (num_i4_i2_loss)
-                den_i5_i2_ss = self.cos_sim(x_num_i5, x_den) / self.temp_fac
-                num_i5_i2_loss = -torch.log(
-                    torch.exp(num_i2_i5_ss) / (torch.exp(num_i2_i5_ss) + torch.sum(torch.exp(den_i5_i2_ss))))
-                net_global_loss = net_global_loss + num_i5_i2_loss
+                # for positive pair (x_a_i2, x_a_j2): (i3,i6) and for positive pair (x_a_j2, x_a_i2)
+                net_global_loss += self.compute_symmetrical_loss(x_num_i3, x_num_i6, x_den)
 
-                # for positive pair (x_a_i2, x_a_j2): (i3,i6)
-                # numerator of loss term (num_i2_i4_ss) & denominator of loss term (den_i2_i4_ss) & loss (num_i2_i4_loss)
-                num_i3_i6_ss = self.cos_sim(x_num_i3, x_num_i6) / self.temp_fac
-                den_i3_i6_ss = self.cos_sim(x_num_i3, x_den) / self.temp_fac
-                num_i3_i6_loss = -torch.log(
-                    torch.exp(num_i3_i6_ss) / (torch.exp(num_i3_i6_ss) + torch.sum(torch.exp(den_i3_i6_ss))))
-                net_global_loss = net_global_loss + num_i3_i6_loss
-                # for positive pair (x_a_j2, x_a_i2)
-                # numerator same & denominator of loss term (den_i4_i2_ss) & loss (num_i4_i2_loss)
-                den_i6_i3_ss = self.cos_sim(x_num_i6, x_den) / self.temp_fac
-                num_i6_i3_loss = -torch.log(
-                    torch.exp(num_i3_i6_ss) / (torch.exp(num_i3_i6_ss) + torch.sum(torch.exp(den_i6_i3_ss))))
-                net_global_loss = net_global_loss + num_i6_i3_loss
-
-            net_global_loss /= 6 * self.batch_size
-
-            return net_global_loss.mean()
+        net_global_loss /= 6 * self.batch_size
+        return net_global_loss.mean()

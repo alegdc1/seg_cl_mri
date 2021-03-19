@@ -115,7 +115,7 @@ class modelObj:
         # Level 4
         enc_c4_a = layers.conv2d_layer(ip_layer=enc_c3_pool, name='enc_c4_a', num_filters=no_filters[4], use_relu=True,use_batch_norm=True, training_phase=train_phase)
         enc_c4_b = layers.conv2d_layer(ip_layer=enc_c4_a, name='enc_c4_b', num_filters=no_filters[4], use_relu=True,use_batch_norm=True, training_phase=train_phase)
-        enc_c4_pool = layers.max_pool_layer2d(enc_c4_b, kernel_size=(2<, 2), strides=(2, 2), padding="SAME",name='enc_c4_pool')
+        enc_c4_pool = layers.max_pool_layer2d(enc_c4_b, kernel_size=(2, 2), strides=(2, 2), padding="SAME",name='enc_c4_pool')
         enc_layers_list.append(enc_c4_b)
 
         # Level 5 - 2x Conv
